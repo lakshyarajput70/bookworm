@@ -3,10 +3,9 @@ const router = express.Router();
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
-
-const generateToken = (userId)=>{
-    return jwt.sign({userId},process.env.JWT_SECRET,{expiresIn:"15d"})
-} 
+const generateToken = (userId) => {
+  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "15d" });
+};
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -30,6 +29,7 @@ export const loginUser = async (req, res) => {
         username: user.username,
         email: user.email,
         profileImage: user.profileImage,
+        createdAt: user.createdAt,
       },
     });
   } catch (error) {

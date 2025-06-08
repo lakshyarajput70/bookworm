@@ -11,13 +11,24 @@ const router = express.Router();
 router.post("/", protectRoute, async (req, res) => {
   try {
     const { title, caption, rating, image } = req.body;
-    if (!image || !title || !caption || !rating)
-      return res.status(400).json({ message: "Please provide all fiels" });
+    if (!image || !title || !caption || !rating) {
+      return res.status(400).json({ message: "Please provide all fields" });
+    }
 
-    //upload image to cloudinary
-    const uploadResponse = await cloudinary.uploader.upload(image);
-    const imageUrl = uploadResponse.secure_url;
-    //save to the database
+    let imageUrl;
+
+    try {
+      // Ensure image is a valid base64 string prefixed with MIME type
+      console.log("Uploading image of length:", image.length);
+      console.log("Image starts with:", image.substring(0, 30));
+      const uploadResponse = await cloudinary.uploader.upload(image, {
+        // upload_preset: "your_upload_preset_if_needed", // optional
+      });
+      imageUrl = uploadResponse.secure_url;
+    } catch (uploadError) {
+      console.error("Cloudinary Upload Error:", uploadError);
+      return res.status(500).json({ message: "Image upload failed" });
+    }
     const newBook = new Book({
       title,
       caption,
@@ -28,9 +39,15 @@ router.post("/", protectRoute, async (req, res) => {
 
     await newBook.save();
     res.status(200).json(newBook);
-  } catch (error) {
-    console.log("Error creating Book", error);
-    res.status(500).json({ message: error.message });
+  } catch (uploadError) {
+    console.error(
+      "Cloudinary Upload Error:",
+      uploadError.message,
+      uploadError.stack
+    );
+    return res
+      .status(500)
+      .json({ message: "Image upload failed: " + uploadError.message });
   }
 });
 
@@ -41,6 +58,7 @@ router.get("/", protectRoute, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 5;
+    // const limit = parseInt(req.query.limit) || 2;
     const skip = (page - 1) * limit;
 
     const books = await Book.find()
@@ -96,7 +114,9 @@ router.delete("/:id", protectRoute, async (req, res) => {
 
 router.get("/user", protectRoute, async (req, res) => {
   try {
-    const books = await Book.find({user:req.user._id}).sort({createdAt:-1});
+    const books = await Book.find({ user: req.user._id }).sort({
+      createdAt: -1,
+    });
     res.json(books);
   } catch (error) {
     console.log("Get users book error", error);
